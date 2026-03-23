@@ -2,59 +2,155 @@
 #include <dt-bindings/zmk/keys.h>
 #include <dt-bindings/zmk/bt.h>
 
+// LAYOUT OVERVIEW (36 keys: 5-col split + 3 thumb per side)
+//
+// 5 Layers:
+//   0 Base    - QWERTY with home row mods (hold ASDF/JKL; for Cmd/Alt/Ctrl/Shft)
+//   1 Nav     - Activated by holding left thumb TAB key
+//   2 Num     - Activated by holding right thumb BSPC key
+//   3 Sym     - Activated by holding right thumb DEL key
+//   4 Fun     - Activated automatically when Nav(1) + Num(2) held together
+//
+// Home Row Mods (tap = letter, hold = modifier):
+//   Left:  A=Cmd  S=Alt  D=Ctrl  F=Shift
+//   Right: J=Shift  K=Ctrl  L=Alt  ;=Cmd
+//
+// Thumb Keys (tap / hold):
+//   Left:  ESC / --  |  TAB / Nav layer  |  SPACE / --
+//   Right: ENT / --  |  BSPC / Num layer |  DEL / Sym layer
+//
+// Combos:
+//   L + ; = ' (single quote / double quote with shift)
+//   F + G = Cmd+Tab (app switcher)
+
 / {
     chosen {
-        zmk,physical-layout = &foostan_corne_6col_layout;
-        // zmk,physical-layout = &foostan_corne_5col_layout;
+        zmk,physical-layout = &foostan_corne_5col_layout;
     };
 };
 
 / {
+    behaviors {
+        hm: homerow_mod {
+            compatible = "zmk,behavior-hold-tap";
+            #binding-cells = <2>;
+            tapping-term-ms = <280>;
+            quick-tap-ms = <175>;
+            require-prior-idle-ms = <150>;
+            flavor = "balanced";
+            bindings = <&kp>, <&kp>;
+        };
+    };
+
+    combos {
+        compatible = "zmk,combos";
+        combo_sqt {
+            timeout-ms = <50>;
+            key-positions = <18 19>;
+            bindings = <&kp SQT>;
+        };
+        combo_cmd_tab {
+            timeout-ms = <50>;
+            key-positions = <13 14>;
+            bindings = <&kp LG(TAB)>;
+        };
+    };
+
+    conditional_layers {
+        compatible = "zmk,conditional-layers";
+        fun_layer {
+            if-layers = <1 2>;
+            then-layer = <4>;
+        };
+    };
+
     keymap {
         compatible = "zmk,keymap";
 
         default_layer {
-            display-name = "QWERTY";
-// --------------------------------------------------------------------------------
-// |  TAB |  Q  |  W  |  E  |  R  |  T  |   |  Y  |  U   |  I  |  O  |  P  | BSPC |
-// | CTRL |  A  |  S  |  D  |  F  |  G  |   |  H  |  J   |  K  |  L  |  ;  |  '   |
-// | SHFT |  Z  |  X  |  C  |  V  |  B  |   |  N  |  M   |  ,  |  .  |  /  | ESC  |
-//                    | GUI | LWR | SPC |   | ENT | RSE  | ALT |
+            display-name = "Base";
+// ------------------------------------------------------------------
+// |  Q  |  W  |  E  |  R  |  T  |   |  Y  |  U  |  I  |  O  |  P  |
+// | A   | S   | D   | F   |  G  |   |  H  | J   | K   | L   | ;   |
+// | Cmd | Alt |Ctrl |Shft |     |   |     |Shft |Ctrl | Alt | Cmd |
+// |  Z  |  X  |  C  |  V  |  B  |   |  N  |  M  |  ,  |  .  |  /  |
+//         | ESC | TAB/Nav(1) | SPC |   | ENT | BSPC/Num(2) | DEL/Sym(3) |
             bindings = <
-&kp TAB   &kp Q &kp W &kp E &kp R &kp T   &kp Y &kp U  &kp I     &kp O   &kp P    &kp BSPC
-&kp LCTRL &kp A &kp S &kp D &kp F &kp G   &kp H &kp J  &kp K     &kp L   &kp SEMI &kp SQT
-&kp LSHFT &kp Z &kp X &kp C &kp V &kp B   &kp N &kp M  &kp COMMA &kp DOT &kp FSLH &kp ESC
-               &kp LGUI &mo 1 &kp SPACE   &kp RET &mo 2 &kp RALT
+&kp Q       &kp W       &kp E        &kp R        &kp T          &kp Y  &kp U        &kp I        &kp O       &kp P
+&hm LGUI A  &hm LALT S  &hm LCTRL D  &hm LSHFT F  &kp G          &kp H  &hm RSHFT J  &hm RCTRL K  &hm RALT L  &hm RGUI SEMI
+&kp Z       &kp X       &kp C        &kp V        &kp B          &kp N  &kp M        &kp COMMA    &kp DOT     &kp FSLH
+                         &kp ESC      &lt 1 TAB    &kp SPACE      &kp RET &lt 2 BSPC  &lt 3 DEL
             >;
         };
 
-        lower_layer {
-            display-name = "NUMBER";
-// -----------------------------------------------------------------------------------------
-// |  TAB |  1  |  2  |  3  |  4  |  5  |   |  6  |  7  |  8  |  9  |  0  | BSPC |
-// | BTCLR| BT1 | BT2 | BT3 | BT4 | BT5 |   | LFT | DWN |  UP | RGT |     |Studio|
-// | SHFT |     |     |     |     |     |   |     |     |     |     |     |      |
-//                    | GUI |     | SPC |   | ENT |     | ALT |
+        nav_layer {
+            display-name = "Nav";
+// Activated: hold TAB (left middle thumb)
+// Left hand: macOS clipboard shortcuts | Right hand: navigation
+// ------------------------------------------------------------------
+// |Cmd+Shift+Z|Cmd+V|Cmd+C|Cmd+X|Cmd+Z|   |HOME |PGDN |PGUP | END | INS |
+// | Cmd | Alt |Ctrl |Shft |     |   |  <  |  v  |  ^  |  >  |CAPWD|
+// |Cmd+Z|Cmd+X|Cmd+C|Cmd+V|     |   |Cmd+<|Alt+<|Alt+>|Cmd+>|     |
+//              |     | === |     |   | ENT |BSPC | DEL |
+//                    (held)        CAPWD = caps_word
             bindings = <
-&kp TAB    &kp N1       &kp N2       &kp N3       &kp N4       &kp N5         &kp N6   &kp N7   &kp N8 &kp N9    &kp N0 &kp BSPC
-&bt BT_CLR &bt BT_SEL 0 &bt BT_SEL 1 &bt BT_SEL 2 &bt BT_SEL 3 &bt BT_SEL 4   &kp LEFT &kp DOWN &kp UP &kp RIGHT &trans &studio_unlock
-&kp LSHFT  &trans       &trans       &trans       &trans       &trans         &trans   &trans   &trans &trans    &trans &trans
-                                     &kp LGUI     &trans       &kp SPACE      &kp RET  &trans   &kp RALT
+&kp LG(LS(Z)) &kp LG(V) &kp LG(C) &kp LG(X) &kp LG(Z)      &kp HOME      &kp PG_DN     &kp PG_UP     &kp END       &kp INS
+&kp LGUI      &kp LALT   &kp LCTRL  &kp LSHFT  &trans          &kp LEFT      &kp DOWN      &kp UP        &kp RIGHT     &caps_word
+&kp LG(Z)     &kp LG(X)  &kp LG(C)  &kp LG(V)  &trans          &kp LG(LEFT)  &kp LA(LEFT)  &kp LA(RIGHT) &kp LG(RIGHT) &trans
+                         &trans     &trans     &trans          &kp RET       &kp BSPC      &kp DEL
             >;
         };
 
-        raise_layer {
-            display-name = "SYMBOL";
-// -----------------------------------------------------------------------------------------
-// |  TAB |  !  |  @  |  #  |  $  |  %  |   |  ^  |  &  |  *  |  (  |  )  | BSPC |
-// | CTRL |     |     |     |     |     |   |  -  |  =  |  [  |  ]  |  \  |  `   |
-// | SHFT |     |     |     |     |     |   |  _  |  +  |  {  |  }  | "|" |  ~   |
-//                    | GUI |     | SPC |   | ENT |     | ALT |
+        num_layer {
+            display-name = "Num";
+// Activated: hold BSPC (right middle thumb)
+// Left hand: numpad + extras | Right hand: sticky mods for combos
+// ------------------------------------------------------------------
+// |  [  |  7  |  8  |  9  |  ]  |   |     |     |     |     |     |
+// |  ;  |  4  |  5  |  6  |  =  |   |     |Shft |Ctrl | Alt | Cmd |
+// |  `  |  1  |  2  |  3  |  \  |   |     |     |     |     |     |
+//              |  .  |  0  |  -  |   |     | === |     |
+//                                        (held)
             bindings = <
-&kp  TAB  &kp EXCL &kp AT &kp HASH &kp DLLR &kp PRCNT   &kp CARET &kp AMPS  &kp ASTRK &kp LPAR &kp RPAR &kp BSPC
-&kp LCTRL &trans   &trans &trans   &trans   &trans      &kp MINUS &kp EQUAL &kp LBKT  &kp RBKT &kp BSLH &kp GRAVE
-&kp LSHFT &trans   &trans &trans   &trans   &trans      &kp UNDER &kp PLUS  &kp LBRC  &kp RBRC &kp PIPE &kp TILDE
-                          &kp LGUI &trans   &kp SPACE   &kp RET   &trans    &kp RALT
+&kp LBKT  &kp N7 &kp N8  &kp N9 &kp RBKT       &trans &trans     &trans     &trans    &trans
+&kp SEMI  &kp N4 &kp N5  &kp N6 &kp EQUAL      &trans &kp RSHFT  &kp RCTRL  &kp RALT  &kp RGUI
+&kp GRAVE &kp N1 &kp N2  &kp N3 &kp BSLH       &trans &trans     &trans     &trans    &trans
+                  &kp DOT &kp N0 &kp MINUS       &trans &trans     &trans
+            >;
+        };
+
+        sym_layer {
+            display-name = "Sym";
+// Shifted counterparts of Num layer in matching positions
+// Left hand: symbols | Right hand: sticky mods for combos
+// ------------------------------------------------------------------
+// |  {  |  &  |  *  |  (  |  }  |   |     |     |     |     |     |
+// |  :  |  $  |  %  |  ^  |  +  |   |     |Shft |Ctrl | Alt | Cmd |
+// |  ~  |  !  |  @  |  #  |  |  |   |     |     |     |     |     |
+//              |  (  |  )  |  _  |   |     |     |     |
+            bindings = <
+&kp LBRC  &kp AMPS &kp ASTRK &kp LPAR  &kp RBRC      &trans &trans     &trans     &trans    &trans
+&kp COLON &kp DLLR &kp PRCNT &kp CARET &kp PLUS      &trans &kp RSHFT  &kp RCTRL  &kp RALT  &kp RGUI
+&kp TILDE &kp EXCL &kp AT    &kp HASH  &kp PIPE      &trans &trans     &trans     &trans    &trans
+                    &kp LPAR  &kp RPAR  &kp UNDER      &trans &trans     &trans
+            >;
+        };
+
+        fun_layer {
+            display-name = "Fun";
+// Activated: hold TAB + BSPC together (Nav + Num = conditional layer 4)
+// Left hand: F-keys | Right hand: bluetooth, media, brightness
+// ------------------------------------------------------------------
+// | F12 | F7  | F8  | F9  |PSCRN|   | BT0 | BT1 | BT2 | BT3 |BTCLR|
+// | F11 | F4  | F5  | F6  |SLCK |   |PREV |VOL- |VOL+ |NEXT |STUDI|
+// | F10 | F1  | F2  | F3  |PAUSE|   |MUTE |BRI- |BRI+ |     |     |
+//              |     | === |     |   | P/P |STOP |     |
+//                    (held)              ^play/pause
+            bindings = <
+&kp F12 &kp F7 &kp F8 &kp F9 &kp PSCRN          &bt BT_SEL 0 &bt BT_SEL 1 &bt BT_SEL 2 &bt BT_SEL 3 &bt BT_CLR
+&kp F11 &kp F4 &kp F5 &kp F6 &kp SLCK           &kp C_PREV   &kp C_VOL_DN &kp C_VOL_UP &kp C_NEXT   &studio_unlock
+&kp F10 &kp F1 &kp F2 &kp F3 &kp PAUSE_BREAK    &kp C_MUTE   &kp C_BRI_DN &kp C_BRI_UP &trans       &trans
+                &trans &trans  &trans              &kp C_PP     &kp C_STOP   &trans
             >;
         };
     };
